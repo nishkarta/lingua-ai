@@ -62,7 +62,7 @@ Built with **Next.js (App Router, TypeScript)**, **Tailwind CSS**, the **Google 
 
 1. Open your terminal in the project directory:
    ```bash
-   cd /Users/nishkarta/.gemini/antigravity/scratch/lingua-ai
+   cd /Users/nishkarta/Documents/personal-projects/lingua-ai
    ```
 
 2. Start the local development server:
