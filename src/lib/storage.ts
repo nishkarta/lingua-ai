@@ -3,6 +3,15 @@ import { UserStats, VocabularyWord, CEFRLevel } from '@/types';
 const STATS_KEY = 'lingua_user_stats';
 const VOCAB_KEY = 'lingua_vocab_bank';
 const SETTINGS_KEY = 'lingua_app_settings';
+const AUTH_TOKEN_KEY = 'lingua_auth_token';
+const CURRENT_USER_KEY = 'lingua_current_user';
+
+export interface AuthUserProfile {
+  id: string;
+  name: string;
+  email: string;
+  createdAt: string;
+}
 
 export interface AppSettings {
   geminiApiKey: string;
@@ -94,6 +103,97 @@ export const initialVocabulary: VocabularyWord[] = [
   },
 ];
 
+// -------------------------------------------------------------
+// AUTH CREDENTIAL & PROFILE HELPERS
+// -------------------------------------------------------------
+export const getAuthToken = (): string => {
+  if (typeof window === 'undefined') return '';
+  try {
+    return localStorage.getItem(AUTH_TOKEN_KEY) || '';
+  } catch {
+    return '';
+  }
+};
+
+export const setAuthToken = (token: string): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!token) localStorage.removeItem(AUTH_TOKEN_KEY);
+    else localStorage.setItem(AUTH_TOKEN_KEY, token);
+  } catch (e) {
+    console.error('Failed to set auth token', e);
+  }
+};
+
+export const getCurrentUser = (): AuthUserProfile | null => {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(CURRENT_USER_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+};
+
+export const setCurrentUser = (user: AuthUserProfile | null): void => {
+  if (typeof window === 'undefined') return;
+  try {
+    if (!user) localStorage.removeItem(CURRENT_USER_KEY);
+    else localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
+  } catch (e) {
+    console.error('Failed to set current user', e);
+  }
+};
+
+export const logoutLocalUser = async (): Promise<void> => {
+  const token = getAuthToken();
+  if (token) {
+    try {
+      await fetch('/api/auth', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'logout' }),
+      });
+    } catch {
+      // Ignore network errors on logout
+    }
+  }
+  setAuthToken('');
+  setCurrentUser(null);
+};
+
+// Auto-sync progress to server when authenticated
+export const syncProgressToServer = async (): Promise<void> => {
+  const token = getAuthToken();
+  if (!token) return;
+
+  try {
+    const stats = getStoredStats();
+    const vocabulary = getStoredVocab();
+    const settings = getStoredSettings();
+
+    await fetch('/api/auth', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        action: 'sync',
+        stats,
+        vocabulary,
+        settings,
+      }),
+    });
+  } catch (e) {
+    console.warn('Background sync warning:', e);
+  }
+};
+
+// -------------------------------------------------------------
+// STATS & PROGRESS
+// -------------------------------------------------------------
 export const getStoredStats = (): UserStats => {
   if (typeof window === 'undefined') return defaultStats;
   try {
@@ -109,6 +209,7 @@ export const saveStoredStats = (stats: UserStats): void => {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(STATS_KEY, JSON.stringify(stats));
+    syncProgressToServer();
   } catch (e) {
     console.error('Failed to save stats', e);
   }
@@ -161,6 +262,9 @@ export const addXP = (amount: number, skill?: keyof UserStats['skillScores']): U
   return updated;
 };
 
+// -------------------------------------------------------------
+// VOCABULARY BANK
+// -------------------------------------------------------------
 export const getStoredVocab = (): VocabularyWord[] => {
   if (typeof window === 'undefined') return initialVocabulary;
   try {
@@ -179,6 +283,7 @@ export const saveStoredVocab = (vocab: VocabularyWord[]): void => {
   if (typeof window === 'undefined') return;
   try {
     localStorage.setItem(VOCAB_KEY, JSON.stringify(vocab));
+    syncProgressToServer();
   } catch (e) {
     console.error('Failed to save vocabulary', e);
   }
@@ -203,6 +308,9 @@ export const addWordToVocab = (word: Omit<VocabularyWord, 'id' | 'dateAdded' | '
   return true;
 };
 
+// -------------------------------------------------------------
+// SETTINGS
+// -------------------------------------------------------------
 export const getStoredSettings = (): AppSettings => {
   if (typeof window === 'undefined') return defaultSettings;
   try {
@@ -220,6 +328,7 @@ export const saveStoredSettings = (settings: Partial<AppSettings>): AppSettings 
     const current = getStoredSettings();
     const updated = { ...current, ...settings };
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(updated));
+    syncProgressToServer();
     return updated;
   } catch {
     return defaultSettings;

@@ -1,0 +1,105 @@
+{
+  "users": [
+    {
+      "id": "usr_1791012245331_40ad2143",
+      "name": "Test User",
+      "email": "test@example.com",
+      "passwordHash": "96f7d5dd9f993c31c6137b0a4be2f4489d92d0b4147217b2343fb3ad913a5294d938ae29a5365f96ba5ea1f33745b13ef188839e6ea21b122e68a7bd2da390f6",
+      "salt": "fd98a4d1cb205045f4249b0f7d1f9a45",
+      "createdAt": "2026-10-03T07:24:05.331Z",
+      "stats": {
+        "xp": 320,
+        "streak": 3,
+        "lastActiveDate": "2026-10-03",
+        "level": "B1",
+        "skillScores": {
+          "reading": 72,
+          "writing": 65,
+          "listening": 80,
+          "speaking": 58
+        },
+        "completedExercises": {
+          "reading": 4,
+          "writing": 2,
+          "listening": 5,
+          "speaking": 3
+        }
+      },
+      "vocabulary": [
+        {
+          "id": "1",
+          "word": "resilient",
+          "phonetic": "/rɪˈzɪl.jənt/",
+          "partOfSpeech": "adjective",
+          "definition": "Able to be happy, successful, etc. again after something difficult or bad has happened.",
+          "example": "Life is harsh for all of us, but humans are extraordinarily resilient.",
+          "cefr": "B2",
+          "dateAdded": "2026-10-01",
+          "nextReviewDate": "2026-10-04",
+          "interval": 3,
+          "easeFactor": 2.5
+        },
+        {
+          "id": "2",
+          "word": "articulate",
+          "phonetic": "/ɑːˈtɪk.jə.lət/",
+          "partOfSpeech": "adjective",
+          "definition": "Able to express thoughts and feelings easily and clearly in speech or writing.",
+          "example": "She gave an articulate and persuasive presentation to the board.",
+          "cefr": "C1",
+          "dateAdded": "2026-10-02",
+          "nextReviewDate": "2026-10-05",
+          "interval": 4,
+          "easeFactor": 2.6
+        },
+        {
+          "id": "3",
+          "word": "ubiquitous",
+          "phonetic": "/juːˈbɪk.wɪ.təs/",
+          "partOfSpeech": "adjective",
+          "definition": "Present, appearing, or found everywhere at the same time.",
+          "example": "Smartphones have become ubiquitous in modern society.",
+          "cefr": "C2",
+          "dateAdded": "2026-10-03",
+          "nextReviewDate": "2026-10-06",
+          "interval": 2,
+          "easeFactor": 2.4
+        },
+        {
+          "id": "4",
+          "word": "pragmatic",
+          "phonetic": "/præɡˈmæt.ɪk/",
+          "partOfSpeech": "adjective",
+          "definition": "Solving problems in a sensible way that suits the conditions that really exist, rather than following theoretical ideas.",
+          "example": "We need a pragmatic approach to tackling climate change effectively.",
+          "cefr": "B2",
+          "dateAdded": "2026-10-03",
+          "nextReviewDate": "2026-10-05",
+          "interval": 1,
+          "easeFactor": 2.5
+        }
+      ],
+      "settings": {
+        "geminiApiKey": "",
+        "voiceURI": "",
+        "speechRate": 1,
+        "speechPitch": 1,
+        "soundEffects": true
+      }
+    }
+  ],
+  "sessions": [
+    {
+      "token": "2d62b135399f8f196e9426d98b97d1f53a023cf52b22570f62dc256c54328240",
+      "userId": "usr_1791012245331_40ad2143",
+      "createdAt": "2026-10-03T07:24:05.332Z",
+      "expiresAt": "2026-11-02T07:24:05.332Z"
+    },
+    {
+      "token": "65c505573e03f24c146acd9c085d9bb643d80d15d3032b18f55d07bd26c3f0d2",
+      "userId": "usr_1791012245331_40ad2143",
+      "createdAt": "2026-10-03T07:24:13.378Z",
+      "expiresAt": "2026-11-02T07:24:13.378Z"
+    }
+  ]
+}

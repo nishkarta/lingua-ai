@@ -2,7 +2,14 @@
 
 import React, { useState, useEffect } from 'react';
 import { UserStats } from '@/types';
-import { getStoredStats, defaultStats } from '@/lib/storage';
+import {
+  getStoredStats,
+  defaultStats,
+  getCurrentUser,
+  getAuthToken,
+  logoutLocalUser,
+  AuthUserProfile,
+} from '@/lib/storage';
 import { Navbar } from '@/components/Navbar';
 import { SkillDashboard } from '@/components/dashboard/SkillDashboard';
 import { ReadingStudio } from '@/components/reading/ReadingStudio';
@@ -11,26 +18,60 @@ import { ListeningLab } from '@/components/listening/ListeningLab';
 import { SpeakingCoach } from '@/components/speaking/SpeakingCoach';
 import { VocabularyBank } from '@/components/vocabulary/VocabularyBank';
 import { SettingsModal } from '@/components/settings/SettingsModal';
+import { AuthModal } from '@/components/auth/AuthModal';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [stats, setStats] = useState<UserStats>(defaultStats);
+  const [user, setUser] = useState<AuthUserProfile | null>(null);
+
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
+  const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
   const [isMounted, setIsMounted] = useState<boolean>(false);
 
   useEffect(() => {
     setIsMounted(true);
     setStats(getStoredStats());
+    setUser(getCurrentUser());
+
+    // Verify session on server in the background
+    const token = getAuthToken();
+    if (token) {
+      fetch('/api/auth')
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.user) {
+            setUser(data.user);
+          } else {
+            // Session expired or invalid
+            logoutLocalUser();
+            setUser(null);
+          }
+        })
+        .catch(() => {});
+    }
 
     // Refresh stats periodically or on focus to reflect earned XP
     const handleFocus = () => {
       setStats(getStoredStats());
+      setUser(getCurrentUser());
     };
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
   }, []);
 
   const handleUpdateStats = () => {
+    setStats(getStoredStats());
+  };
+
+  const handleAuthSuccess = (authenticatedUser: AuthUserProfile) => {
+    setUser(authenticatedUser);
+    setStats(getStoredStats());
+  };
+
+  const handleLogout = async () => {
+    await logoutLocalUser();
+    setUser(null);
     setStats(getStoredStats());
   };
 
@@ -52,7 +93,10 @@ export default function Home() {
           handleUpdateStats();
         }}
         stats={stats}
+        user={user}
         onOpenSettings={() => setIsSettingsOpen(true)}
+        onOpenAuth={() => setIsAuthOpen(true)}
+        onLogout={handleLogout}
       />
 
       {/* Main Content Area */}
@@ -79,6 +123,13 @@ export default function Home() {
         {activeTab === 'vocabulary' && <VocabularyBank />}
       </main>
 
+      {/* Auth Login / Register Modal */}
+      <AuthModal
+        isOpen={isAuthOpen}
+        onClose={() => setIsAuthOpen(false)}
+        onSuccess={handleAuthSuccess}
+      />
+
       {/* Settings & Key Configuration Modal */}
       <SettingsModal
         isOpen={isSettingsOpen}
@@ -95,7 +146,7 @@ export default function Home() {
           <div className="flex items-center gap-4 text-[11px] text-slate-400">
             <span>CEFR Framework (A1 - C2)</span>
             <span>•</span>
-            <span>Web Speech API Audio</span>
+            <span>Local Database & Session Auth</span>
             <span>•</span>
             <span>Spaced Repetition SRS</span>
           </div>
