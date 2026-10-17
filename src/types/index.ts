@@ -19,6 +19,13 @@ export interface UserStats {
     listening: number;
     speaking: number;
   };
+  lastScores?: {
+    reading?: { score: number | string; title?: string; date?: string };
+    writing?: { score: number | string; title?: string; date?: string };
+    listening?: { score: number | string; title?: string; date?: string };
+    speaking?: { score: number | string; title?: string; date?: string };
+  };
+  exerciseScores?: Record<string, { score: number | string; date: string }>;
 }
 
 export interface VocabularyWord {

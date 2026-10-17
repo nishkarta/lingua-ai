@@ -186,6 +186,12 @@ export const SkillDashboard: React.FC<SkillDashboardProps> = ({
                 <span>Completed:</span>
                 <span className="font-semibold text-slate-200">{stats.completedExercises.reading} articles</span>
               </div>
+              {stats.lastScores?.reading && (
+                <div className="flex items-center justify-between text-xs bg-slate-950/70 px-2.5 py-1.5 rounded-xl border border-blue-500/20">
+                  <span className="text-slate-400 font-medium">Last Score:</span>
+                  <span className="font-bold text-blue-400">{stats.lastScores.reading.score}</span>
+                </div>
+              )}
             </div>
             <button
               onClick={() => onNavigateTab('reading')}
@@ -197,7 +203,7 @@ export const SkillDashboard: React.FC<SkillDashboardProps> = ({
 
           {/* 2. Writing Studio */}
           <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800/90 hover:border-emerald-500/40 transition-all flex flex-col justify-between group">
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
                   <PenTool className="w-5 h-5" />
@@ -218,6 +224,12 @@ export const SkillDashboard: React.FC<SkillDashboardProps> = ({
                 <span>Evaluated:</span>
                 <span className="font-semibold text-slate-200">{stats.completedExercises.writing} essays</span>
               </div>
+              {stats.lastScores?.writing && (
+                <div className="flex items-center justify-between text-xs bg-slate-950/70 px-2.5 py-1.5 rounded-xl border border-emerald-500/20">
+                  <span className="text-slate-400 font-medium">Last Score:</span>
+                  <span className="font-bold text-emerald-400">{stats.lastScores.writing.score}</span>
+                </div>
+              )}
             </div>
             <button
               onClick={() => onNavigateTab('writing')}
@@ -229,7 +241,7 @@ export const SkillDashboard: React.FC<SkillDashboardProps> = ({
 
           {/* 3. Listening Lab */}
           <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800/90 hover:border-purple-500/40 transition-all flex flex-col justify-between group">
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400">
                   <Headphones className="w-5 h-5" />
@@ -250,6 +262,12 @@ export const SkillDashboard: React.FC<SkillDashboardProps> = ({
                 <span>Completed:</span>
                 <span className="font-semibold text-slate-200">{stats.completedExercises.listening} audios</span>
               </div>
+              {stats.lastScores?.listening && (
+                <div className="flex items-center justify-between text-xs bg-slate-950/70 px-2.5 py-1.5 rounded-xl border border-purple-500/20">
+                  <span className="text-slate-400 font-medium">Last Score:</span>
+                  <span className="font-bold text-purple-400">{stats.lastScores.listening.score}</span>
+                </div>
+              )}
             </div>
             <button
               onClick={() => onNavigateTab('listening')}
@@ -261,7 +279,7 @@ export const SkillDashboard: React.FC<SkillDashboardProps> = ({
 
           {/* 4. Speaking Coach */}
           <div className="p-5 rounded-2xl bg-slate-900 border border-slate-800/90 hover:border-amber-500/40 transition-all flex flex-col justify-between group">
-            <div className="space-y-4">
+            <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-400">
                   <Mic className="w-5 h-5" />
@@ -282,6 +300,12 @@ export const SkillDashboard: React.FC<SkillDashboardProps> = ({
                 <span>Practiced:</span>
                 <span className="font-semibold text-slate-200">{stats.completedExercises.speaking} sessions</span>
               </div>
+              {stats.lastScores?.speaking && (
+                <div className="flex items-center justify-between text-xs bg-slate-950/70 px-2.5 py-1.5 rounded-xl border border-amber-500/20">
+                  <span className="text-slate-400 font-medium">Last Score:</span>
+                  <span className="font-bold text-amber-400">{stats.lastScores.speaking.score}</span>
+                </div>
+              )}
             </div>
             <button
               onClick={() => onNavigateTab('speaking')}
@@ -315,7 +339,14 @@ export const SkillDashboard: React.FC<SkillDashboardProps> = ({
                 <p className="text-[11px] text-slate-400">AI & Daily Life (B2)</p>
               </div>
             </div>
-            <span className="text-[11px] text-indigo-400 font-bold">+25 XP</span>
+            <div className="text-right flex flex-col items-end gap-1">
+              <span className="text-[11px] text-indigo-400 font-bold">+25 XP</span>
+              {stats.lastScores?.reading && (
+                <span className="text-[10px] text-blue-300 font-semibold bg-blue-950/60 px-1.5 py-0.5 rounded border border-blue-500/30">
+                  Last: {stats.lastScores.reading.score}
+                </span>
+              )}
+            </div>
           </div>
 
           <div
@@ -323,13 +354,20 @@ export const SkillDashboard: React.FC<SkillDashboardProps> = ({
             className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 hover:border-slate-700 cursor-pointer flex items-center justify-between transition-colors"
           >
             <div className="flex items-center gap-3">
-              <CheckCircle className="w-4 h-4 text-slate-600" />
+              <CheckCircle className="w-4 h-4 text-purple-400" />
               <div>
                 <p className="text-xs font-bold text-white">3 Dictation Rounds</p>
                 <p className="text-[11px] text-slate-400">Artisan Bakery Dialogue</p>
               </div>
             </div>
-            <span className="text-[11px] text-purple-400 font-bold">+25 XP</span>
+            <div className="text-right flex flex-col items-end gap-1">
+              <span className="text-[11px] text-purple-400 font-bold">+25 XP</span>
+              {stats.lastScores?.listening && (
+                <span className="text-[10px] text-purple-300 font-semibold bg-purple-950/60 px-1.5 py-0.5 rounded border border-purple-500/30">
+                  Last: {stats.lastScores.listening.score}
+                </span>
+              )}
+            </div>
           </div>
 
           <div
@@ -337,13 +375,20 @@ export const SkillDashboard: React.FC<SkillDashboardProps> = ({
             className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 hover:border-slate-700 cursor-pointer flex items-center justify-between transition-colors"
           >
             <div className="flex items-center gap-3">
-              <CheckCircle className="w-4 h-4 text-slate-600" />
+              <CheckCircle className="w-4 h-4 text-amber-400" />
               <div>
                 <p className="text-xs font-bold text-white">Pronunciation Drill</p>
                 <p className="text-[11px] text-slate-400">/θ/ vs /ð/ Fricatives</p>
               </div>
             </div>
-            <span className="text-[11px] text-amber-400 font-bold">+25 XP</span>
+            <div className="text-right flex flex-col items-end gap-1">
+              <span className="text-[11px] text-amber-400 font-bold">+25 XP</span>
+              {stats.lastScores?.speaking && (
+                <span className="text-[10px] text-amber-300 font-semibold bg-amber-950/60 px-1.5 py-0.5 rounded border border-amber-500/30">
+                  Last: {stats.lastScores.speaking.score}
+                </span>
+              )}
+            </div>
           </div>
 
           <div
@@ -351,13 +396,20 @@ export const SkillDashboard: React.FC<SkillDashboardProps> = ({
             className="p-3.5 rounded-xl bg-slate-950/60 border border-slate-800/80 hover:border-slate-700 cursor-pointer flex items-center justify-between transition-colors"
           >
             <div className="flex items-center gap-3">
-              <CheckCircle className="w-4 h-4 text-slate-600" />
+              <CheckCircle className="w-4 h-4 text-emerald-400" />
               <div>
                 <p className="text-xs font-bold text-white">Submit 1 Essay</p>
                 <p className="text-[11px] text-slate-400">IELTS Task 2 Review</p>
               </div>
             </div>
-            <span className="text-[11px] text-emerald-400 font-bold">+25 XP</span>
+            <div className="text-right flex flex-col items-end gap-1">
+              <span className="text-[11px] text-emerald-400 font-bold">+25 XP</span>
+              {stats.lastScores?.writing && (
+                <span className="text-[10px] text-emerald-300 font-semibold bg-emerald-950/60 px-1.5 py-0.5 rounded border border-emerald-500/30">
+                  Last: {stats.lastScores.writing.score}
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>

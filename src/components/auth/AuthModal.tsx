@@ -11,7 +11,17 @@ import {
   saveStoredStats,
   saveStoredVocab,
   saveStoredSettings,
+  defaultStats,
+  initialVocabulary,
+  defaultSettings,
 } from '@/lib/storage';
+import { auth, db, isFirebaseConfigured } from '@/lib/firebase';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
+} from 'firebase/auth';
+import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import {
   X,
   User,
@@ -54,57 +64,102 @@ export const AuthModal: React.FC<AuthModalProps> = ({
     setErrorMessage('');
     setLoading(true);
 
+    const firebaseAuth = auth;
+    const firestore = db;
+
+    if (!isFirebaseConfigured || !firebaseAuth || !firestore) {
+      setErrorMessage(
+        'Firebase credentials are not configured yet. Please add your NEXT_PUBLIC_FIREBASE_* variables to .env.local to enable cloud accounts.'
+      );
+      setLoading(false);
+      return;
+    }
+
     try {
-      const payload: Record<string, unknown> = {
-        action: mode === 'signup' ? 'register' : 'login',
-        email,
-        password,
-      };
+      let finalUser: AuthUserProfile;
 
       if (mode === 'signup') {
-        payload.name = name;
-        if (migrateGuestData) {
-          payload.initialStats = getStoredStats();
-          payload.initialVocab = getStoredVocab();
-          payload.initialSettings = getStoredSettings();
+        const userCredential = await createUserWithEmailAndPassword(firebaseAuth, email, password);
+        const fbUser = userCredential.user;
+
+        if (name.trim()) {
+          await updateProfile(fbUser, { displayName: name.trim() });
+        }
+
+        finalUser = {
+          id: fbUser.uid,
+          name: name.trim() || fbUser.email?.split('@')[0] || 'Learner',
+          email: fbUser.email || email,
+          createdAt: new Date().toISOString(),
+          isAnonymous: false,
+        };
+
+        const initialStats = migrateGuestData ? getStoredStats() : defaultStats;
+        const initialVocab = migrateGuestData ? getStoredVocab() : initialVocabulary;
+        const initialConf = migrateGuestData ? getStoredSettings() : defaultSettings;
+
+        // Persist to Cloud Firestore
+        const userDocRef = doc(firestore, 'users', fbUser.uid);
+        await setDoc(userDocRef, {
+          profile: finalUser,
+          stats: initialStats,
+          vocabulary: initialVocab,
+          settings: initialConf,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+
+        saveStoredStats(initialStats);
+        saveStoredVocab(initialVocab);
+        saveStoredSettings(initialConf);
+      } else {
+        const userCredential = await signInWithEmailAndPassword(firebaseAuth, email, password);
+        const fbUser = userCredential.user;
+
+        finalUser = {
+          id: fbUser.uid,
+          name: fbUser.displayName || fbUser.email?.split('@')[0] || 'Learner',
+          email: fbUser.email || email,
+          createdAt: fbUser.metadata.creationTime || new Date().toISOString(),
+          isAnonymous: false,
+        };
+
+        // Fetch user data from Cloud Firestore
+        const userDocRef = doc(firestore, 'users', fbUser.uid);
+        const docSnap = await getDoc(userDocRef);
+
+        if (docSnap.exists()) {
+          const cloudData = docSnap.data();
+          if (cloudData.stats) saveStoredStats(cloudData.stats);
+          if (cloudData.vocabulary) saveStoredVocab(cloudData.vocabulary);
+          if (cloudData.settings) saveStoredSettings(cloudData.settings);
+          if (cloudData.profile) finalUser = { ...finalUser, ...cloudData.profile };
         }
       }
 
-      const res = await fetch('/api/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Authentication failed. Please verify your credentials.');
-      }
-
-      // Store credentials and profile locally
-      setAuthToken(data.token);
-      setCurrentUser(data.user);
-
-      // If logging in, restore user's saved progress from server database
-      if (data.user.stats) {
-        saveStoredStats(data.user.stats);
-      }
-      if (data.user.vocabulary) {
-        saveStoredVocab(data.user.vocabulary);
-      }
-      if (data.user.settings) {
-        saveStoredSettings(data.user.settings);
-      }
+      const idToken = await firebaseAuth.currentUser?.getIdToken();
+      if (idToken) setAuthToken(idToken);
+      setCurrentUser(finalUser);
 
       setSuccessNotice(true);
       setTimeout(() => {
         setSuccessNotice(false);
-        onSuccess(data.user);
+        onSuccess(finalUser);
         onClose();
       }, 700);
     } catch (err: unknown) {
-      setErrorMessage(err instanceof Error ? err.message : 'Authentication error');
+      const fbError = err as { code?: string; message?: string };
+      if (fbError.code === 'auth/email-already-in-use') {
+        setErrorMessage('An account with this email address already exists.');
+      } else if (fbError.code === 'auth/wrong-password' || fbError.code === 'auth/invalid-credential' || fbError.code === 'auth/user-not-found') {
+        setErrorMessage('Invalid email or password. Please check your credentials.');
+      } else if (fbError.code === 'auth/weak-password') {
+        setErrorMessage('Password should be at least 6 characters.');
+      } else if (fbError.code === 'auth/invalid-email') {
+        setErrorMessage('Please enter a valid email address.');
+      } else {
+        setErrorMessage(fbError.message || 'Authentication error. Please try again.');
+      }
     } finally {
       setLoading(false);
     }

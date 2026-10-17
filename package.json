@@ -2,6 +2,7 @@
   "name": "lingua-ai",
   "version": "0.1.0",
   "private": true,
+  "packageManager": "yarn@1.22.19",
   "scripts": {
     "dev": "next dev --webpack",
     "build": "next build --webpack",
@@ -12,6 +13,7 @@
     "@google/genai": "^2.27.0",
     "@types/canvas-confetti": "^1.9.0",
     "canvas-confetti": "^1.9.4",
+    "firebase": "^13.0.0",
     "lucide-react": "^1.51.0",
     "next": "16.3.8",
     "react": "19.2.8",

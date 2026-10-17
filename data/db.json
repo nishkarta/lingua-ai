@@ -86,6 +86,106 @@
         "speechPitch": 1,
         "soundEffects": true
       }
+    },
+    {
+      "id": "usr_1791012334184_092b9bbe",
+      "name": "test123",
+      "email": "test123@test.com",
+      "passwordHash": "299d7e0a9409a9ea66034d9286c7f972ecb7a07525e0f976b7dc26ffc9e66f8951586da674003929e7a90e2c3bfabaf98b08ca9668478fde4b4f0b2aab363e36",
+      "salt": "6bc0b214f6882ca7fae252d5005424ab",
+      "createdAt": "2026-10-03T07:25:34.184Z",
+      "stats": {
+        "xp": 565,
+        "streak": 3,
+        "lastActiveDate": "2026-10-03",
+        "level": "B2",
+        "skillScores": {
+          "reading": 72,
+          "writing": 65,
+          "listening": 100,
+          "speaking": 58
+        },
+        "completedExercises": {
+          "reading": 4,
+          "writing": 2,
+          "listening": 15,
+          "speaking": 3
+        }
+      },
+      "vocabulary": [
+        {
+          "word": "surreal",
+          "phonetic": "/surreal/",
+          "partOfSpeech": "noun / adjective",
+          "definition": "A meaningful English term conveying specific conceptual nuance in contextual communication.",
+          "example": "Understanding \"surreal\" expands your expressive range in conversational and written English.",
+          "cefr": "B2",
+          "id": "1791012690338",
+          "dateAdded": "2026-10-03",
+          "nextReviewDate": "2026-10-03",
+          "interval": 1,
+          "easeFactor": 2.5
+        },
+        {
+          "id": "1",
+          "word": "resilient",
+          "phonetic": "/rɪˈzɪl.jənt/",
+          "partOfSpeech": "adjective",
+          "definition": "Able to be happy, successful, etc. again after something difficult or bad has happened.",
+          "example": "Life is harsh for all of us, but humans are extraordinarily resilient.",
+          "cefr": "B2",
+          "dateAdded": "2026-10-01",
+          "nextReviewDate": "2026-10-04",
+          "interval": 3,
+          "easeFactor": 2.5
+        },
+        {
+          "id": "2",
+          "word": "articulate",
+          "phonetic": "/ɑːˈtɪk.jə.lət/",
+          "partOfSpeech": "adjective",
+          "definition": "Able to express thoughts and feelings easily and clearly in speech or writing.",
+          "example": "She gave an articulate and persuasive presentation to the board.",
+          "cefr": "C1",
+          "dateAdded": "2026-10-02",
+          "nextReviewDate": "2026-10-05",
+          "interval": 4,
+          "easeFactor": 2.6
+        },
+        {
+          "id": "3",
+          "word": "ubiquitous",
+          "phonetic": "/juːˈbɪk.wɪ.təs/",
+          "partOfSpeech": "adjective",
+          "definition": "Present, appearing, or found everywhere at the same time.",
+          "example": "Smartphones have become ubiquitous in modern society.",
+          "cefr": "C2",
+          "dateAdded": "2026-10-03",
+          "nextReviewDate": "2026-10-06",
+          "interval": 2,
+          "easeFactor": 2.4
+        },
+        {
+          "id": "4",
+          "word": "pragmatic",
+          "phonetic": "/præɡˈmæt.ɪk/",
+          "partOfSpeech": "adjective",
+          "definition": "Solving problems in a sensible way that suits the conditions that really exist, rather than following theoretical ideas.",
+          "example": "We need a pragmatic approach to tackling climate change effectively.",
+          "cefr": "B2",
+          "dateAdded": "2026-10-03",
+          "nextReviewDate": "2026-10-05",
+          "interval": 1,
+          "easeFactor": 2.5
+        }
+      ],
+      "settings": {
+        "geminiApiKey": "password",
+        "voiceURI": "Google UK English Female",
+        "speechRate": 1,
+        "speechPitch": 1,
+        "soundEffects": true
+      }
     }
   ],
   "sessions": [
@@ -100,6 +200,12 @@
       "userId": "usr_1791012245331_40ad2143",
       "createdAt": "2026-10-03T07:24:13.378Z",
       "expiresAt": "2026-11-02T07:24:13.378Z"
+    },
+    {
+      "token": "fa4e92056285d068da10a69a867e476de55c22c7f12147b9c877f9a871bf1ab6",
+      "userId": "usr_1791012334184_092b9bbe",
+      "createdAt": "2026-10-03T07:28:35.084Z",
+      "expiresAt": "2026-11-02T07:28:35.084Z"
     }
   ]
 }

@@ -6,9 +6,10 @@ import {
   getStoredStats,
   defaultStats,
   getCurrentUser,
-  getAuthToken,
   logoutLocalUser,
   AuthUserProfile,
+  initFirebaseStorage,
+  subscribeToStorage,
 } from '@/lib/storage';
 import { Navbar } from '@/components/Navbar';
 import { SkillDashboard } from '@/components/dashboard/SkillDashboard';
@@ -31,33 +32,27 @@ export default function Home() {
 
   useEffect(() => {
     setIsMounted(true);
+    // Initialize Firebase Auth listener and Firestore data sync
+    initFirebaseStorage();
+
     setStats(getStoredStats());
     setUser(getCurrentUser());
 
-    // Verify session on server in the background
-    const token = getAuthToken();
-    if (token) {
-      fetch('/api/auth')
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.user) {
-            setUser(data.user);
-          } else {
-            // Session expired or invalid
-            logoutLocalUser();
-            setUser(null);
-          }
-        })
-        .catch(() => {});
-    }
+    // Subscribe to live storage updates (e.g. Firestore sync, XP changes)
+    const unsubscribe = subscribeToStorage(() => {
+      setStats(getStoredStats());
+      setUser(getCurrentUser());
+    });
 
-    // Refresh stats periodically or on focus to reflect earned XP
     const handleFocus = () => {
       setStats(getStoredStats());
       setUser(getCurrentUser());
     };
     window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
+    return () => {
+      unsubscribe();
+      window.removeEventListener('focus', handleFocus);
+    };
   }, []);
 
   const handleUpdateStats = () => {

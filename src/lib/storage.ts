@@ -1,16 +1,23 @@
 import { UserStats, VocabularyWord, CEFRLevel } from '@/types';
-
-const STATS_KEY = 'lingua_user_stats';
-const VOCAB_KEY = 'lingua_vocab_bank';
-const SETTINGS_KEY = 'lingua_app_settings';
-const AUTH_TOKEN_KEY = 'lingua_auth_token';
-const CURRENT_USER_KEY = 'lingua_current_user';
+import { auth, db, isFirebaseConfigured } from './firebase';
+import {
+  onAuthStateChanged,
+  signInAnonymously,
+  signOut,
+} from 'firebase/auth';
+import {
+  doc,
+  setDoc,
+  onSnapshot,
+  serverTimestamp,
+} from 'firebase/firestore';
 
 export interface AuthUserProfile {
   id: string;
   name: string;
   email: string;
   createdAt: string;
+  isAnonymous?: boolean;
 }
 
 export interface AppSettings {
@@ -37,6 +44,18 @@ export const defaultStats: UserStats = {
     writing: 2,
     listening: 5,
     speaking: 3,
+  },
+  lastScores: {
+    reading: { score: '80%', title: 'The Global Journey of Coffee', date: '2026-10-02' },
+    writing: { score: 'Band 6.5', title: 'Technology and Human Connection', date: '2026-10-01' },
+    listening: { score: '85%', title: 'Artisan Bakery Consultation', date: '2026-10-03' },
+    speaking: { score: '78%', title: '/θ/ vs /ð/ Dental Fricatives', date: '2026-10-02' },
+  },
+  exerciseScores: {
+    'pass-b1-coffee': { score: '80%', date: '2026-10-02' },
+    'wp-ielts-1': { score: 'Band 6.5', date: '2026-10-01' },
+    'listen-1': { score: '85%', date: '2026-10-03' },
+    'pron-1': { score: '78%', date: '2026-10-02' },
   },
 };
 
@@ -104,115 +123,208 @@ export const initialVocabulary: VocabularyWord[] = [
 ];
 
 // -------------------------------------------------------------
+// IN-MEMORY REACTIVE STATE (BACKED BY FIREBASE FIRESTORE)
+// -------------------------------------------------------------
+let memoryUser: AuthUserProfile | null = null;
+let memoryStats: UserStats = { ...defaultStats };
+let memoryVocab: VocabularyWord[] = [...initialVocabulary];
+let memorySettings: AppSettings = { ...defaultSettings };
+let memoryToken: string = '';
+
+type StorageListener = () => void;
+const storageListeners = new Set<StorageListener>();
+
+export const subscribeToStorage = (listener: StorageListener): (() => void) => {
+  storageListeners.add(listener);
+  return () => {
+    storageListeners.delete(listener);
+  };
+};
+
+const notifyListeners = (): void => {
+  storageListeners.forEach((listener) => {
+    try {
+      listener();
+    } catch (e) {
+      console.error('Storage listener execution error:', e);
+    }
+  });
+};
+
+// -------------------------------------------------------------
+// FIRESTORE SYNC & AUTH LIFECYCLE
+// -------------------------------------------------------------
+let unsubscribeFirestoreDoc: (() => void) | null = null;
+let isStorageInitialized = false;
+
+export const initFirebaseStorage = (): void => {
+  if (typeof window === 'undefined' || isStorageInitialized) return;
+  isStorageInitialized = true;
+
+  const firebaseAuth = auth;
+  const firestore = db;
+  if (!firebaseAuth || !firestore) {
+    return;
+  }
+
+  onAuthStateChanged(firebaseAuth, async (fbUser) => {
+    if (unsubscribeFirestoreDoc) {
+      unsubscribeFirestoreDoc();
+      unsubscribeFirestoreDoc = null;
+    }
+
+    if (fbUser) {
+      try {
+        memoryToken = await fbUser.getIdToken();
+      } catch {
+        memoryToken = fbUser.uid;
+      }
+
+      const profile: AuthUserProfile = {
+        id: fbUser.uid,
+        name:
+          fbUser.displayName ||
+          (fbUser.isAnonymous ? 'Guest Learner' : fbUser.email?.split('@')[0] || 'Learner'),
+        email: fbUser.email || (fbUser.isAnonymous ? 'Guest' : ''),
+        createdAt: fbUser.metadata.creationTime || new Date().toISOString(),
+        isAnonymous: fbUser.isAnonymous,
+      };
+      memoryUser = profile;
+
+      // Subscribe in real-time to the user's Firestore document
+      const userDocRef = doc(firestore, 'users', fbUser.uid);
+      unsubscribeFirestoreDoc = onSnapshot(
+        userDocRef,
+        (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            if (data.stats) memoryStats = data.stats as UserStats;
+            if (data.vocabulary) memoryVocab = data.vocabulary as VocabularyWord[];
+            if (data.settings) memorySettings = { ...defaultSettings, ...data.settings };
+            if (data.profile) memoryUser = { ...profile, ...data.profile };
+          } else {
+            // First time this user logs in, seed their document
+            setDoc(
+              userDocRef,
+              {
+                profile,
+                stats: memoryStats,
+                vocabulary: memoryVocab,
+                settings: memorySettings,
+                createdAt: serverTimestamp(),
+                updatedAt: serverTimestamp(),
+              },
+              { merge: true }
+            ).catch((err) => console.error('Failed to create Firestore user document:', err));
+          }
+          notifyListeners();
+        },
+        (err) => {
+          console.warn('Firestore real-time subscription error:', err);
+        }
+      );
+    } else {
+      // User is logged out
+      memoryUser = null;
+      memoryToken = '';
+      memoryStats = { ...defaultStats };
+      memoryVocab = [...initialVocabulary];
+      memorySettings = { ...defaultSettings };
+      notifyListeners();
+
+      // Automatically sign in anonymously so even guests have their data persisted to Cloud Firestore
+      if (isFirebaseConfigured && firebaseAuth) {
+        signInAnonymously(firebaseAuth).catch((err) => {
+          console.warn('Anonymous sign-in skipped:', err);
+        });
+      }
+    }
+  });
+};
+
+// Asynchronously persist changes directly to Firebase Cloud Firestore
+const syncToFirestore = async (data: {
+  stats?: UserStats;
+  vocabulary?: VocabularyWord[];
+  settings?: AppSettings;
+  profile?: Partial<AuthUserProfile>;
+}): Promise<void> => {
+  const firestore = db;
+  const currentAuth = auth;
+  if (!firestore || !currentAuth?.currentUser) return;
+  try {
+    const userDocRef = doc(firestore, 'users', currentAuth.currentUser.uid);
+    await setDoc(
+      userDocRef,
+      {
+        ...data,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  } catch (error) {
+    console.error('Failed to sync user data to Cloud Firestore:', error);
+  }
+};
+
+// -------------------------------------------------------------
 // AUTH CREDENTIAL & PROFILE HELPERS
 // -------------------------------------------------------------
 export const getAuthToken = (): string => {
-  if (typeof window === 'undefined') return '';
-  try {
-    return localStorage.getItem(AUTH_TOKEN_KEY) || '';
-  } catch {
-    return '';
-  }
+  return memoryToken;
 };
 
 export const setAuthToken = (token: string): void => {
-  if (typeof window === 'undefined') return;
-  try {
-    if (!token) localStorage.removeItem(AUTH_TOKEN_KEY);
-    else localStorage.setItem(AUTH_TOKEN_KEY, token);
-  } catch (e) {
-    console.error('Failed to set auth token', e);
-  }
+  memoryToken = token;
 };
 
 export const getCurrentUser = (): AuthUserProfile | null => {
-  if (typeof window === 'undefined') return null;
-  try {
-    const raw = localStorage.getItem(CURRENT_USER_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
-  }
+  return memoryUser;
 };
 
 export const setCurrentUser = (user: AuthUserProfile | null): void => {
-  if (typeof window === 'undefined') return;
-  try {
-    if (!user) localStorage.removeItem(CURRENT_USER_KEY);
-    else localStorage.setItem(CURRENT_USER_KEY, JSON.stringify(user));
-  } catch (e) {
-    console.error('Failed to set current user', e);
+  memoryUser = user;
+  notifyListeners();
+  if (user && db && auth?.currentUser) {
+    syncToFirestore({ profile: user });
   }
 };
 
 export const logoutLocalUser = async (): Promise<void> => {
-  const token = getAuthToken();
-  if (token) {
+  if (auth) {
     try {
-      await fetch('/api/auth', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'logout' }),
-      });
-    } catch {
-      // Ignore network errors on logout
+      await signOut(auth);
+    } catch (e) {
+      console.warn('Firebase signOut warning:', e);
     }
   }
-  setAuthToken('');
-  setCurrentUser(null);
+  memoryUser = null;
+  memoryToken = '';
+  memoryStats = { ...defaultStats };
+  memoryVocab = [...initialVocabulary];
+  memorySettings = { ...defaultSettings };
+  notifyListeners();
 };
 
-// Auto-sync progress to server when authenticated
 export const syncProgressToServer = async (): Promise<void> => {
-  const token = getAuthToken();
-  if (!token) return;
-
-  try {
-    const stats = getStoredStats();
-    const vocabulary = getStoredVocab();
-    const settings = getStoredSettings();
-
-    await fetch('/api/auth', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        action: 'sync',
-        stats,
-        vocabulary,
-        settings,
-      }),
-    });
-  } catch (e) {
-    console.warn('Background sync warning:', e);
-  }
+  await syncToFirestore({
+    stats: memoryStats,
+    vocabulary: memoryVocab,
+    settings: memorySettings,
+  });
 };
 
 // -------------------------------------------------------------
 // STATS & PROGRESS
 // -------------------------------------------------------------
 export const getStoredStats = (): UserStats => {
-  if (typeof window === 'undefined') return defaultStats;
-  try {
-    const raw = localStorage.getItem(STATS_KEY);
-    if (!raw) return defaultStats;
-    return JSON.parse(raw);
-  } catch {
-    return defaultStats;
-  }
+  return memoryStats;
 };
 
 export const saveStoredStats = (stats: UserStats): void => {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(STATS_KEY, JSON.stringify(stats));
-    syncProgressToServer();
-  } catch (e) {
-    console.error('Failed to save stats', e);
-  }
+  memoryStats = stats;
+  notifyListeners();
+  syncToFirestore({ stats });
 };
 
 export const addXP = (amount: number, skill?: keyof UserStats['skillScores']): UserStats => {
@@ -240,7 +352,8 @@ export const addXP = (amount: number, skill?: keyof UserStats['skillScores']): U
   }
 
   // Recalculate level based on overall average
-  const avg = (updatedScores.reading + updatedScores.writing + updatedScores.listening + updatedScores.speaking) / 4;
+  const avg =
+    (updatedScores.reading + updatedScores.writing + updatedScores.listening + updatedScores.speaking) / 4;
   let newLevel: CEFRLevel = 'A1';
   if (avg >= 88) newLevel = 'C2';
   else if (avg >= 78) newLevel = 'C1';
@@ -262,34 +375,58 @@ export const addXP = (amount: number, skill?: keyof UserStats['skillScores']): U
   return updated;
 };
 
+export const recordPracticeScore = (
+  skill: keyof UserStats['skillScores'],
+  exerciseId: string,
+  score: number | string,
+  title?: string
+): UserStats => {
+  const current = getStoredStats();
+  const today = new Date().toISOString().split('T')[0];
+
+  const updatedLastScores = {
+    ...(current.lastScores || {}),
+    [skill]: {
+      score,
+      title,
+      date: today,
+    },
+  };
+
+  const updatedExerciseScores = {
+    ...(current.exerciseScores || {}),
+    [exerciseId]: {
+      score,
+      date: today,
+    },
+  };
+
+  const updated: UserStats = {
+    ...current,
+    lastScores: updatedLastScores,
+    exerciseScores: updatedExerciseScores,
+  };
+
+  saveStoredStats(updated);
+  return updated;
+};
+
 // -------------------------------------------------------------
 // VOCABULARY BANK
 // -------------------------------------------------------------
 export const getStoredVocab = (): VocabularyWord[] => {
-  if (typeof window === 'undefined') return initialVocabulary;
-  try {
-    const raw = localStorage.getItem(VOCAB_KEY);
-    if (!raw) {
-      localStorage.setItem(VOCAB_KEY, JSON.stringify(initialVocabulary));
-      return initialVocabulary;
-    }
-    return JSON.parse(raw);
-  } catch {
-    return initialVocabulary;
-  }
+  return memoryVocab;
 };
 
 export const saveStoredVocab = (vocab: VocabularyWord[]): void => {
-  if (typeof window === 'undefined') return;
-  try {
-    localStorage.setItem(VOCAB_KEY, JSON.stringify(vocab));
-    syncProgressToServer();
-  } catch (e) {
-    console.error('Failed to save vocabulary', e);
-  }
+  memoryVocab = vocab;
+  notifyListeners();
+  syncToFirestore({ vocabulary: vocab });
 };
 
-export const addWordToVocab = (word: Omit<VocabularyWord, 'id' | 'dateAdded' | 'nextReviewDate' | 'interval' | 'easeFactor'>): boolean => {
+export const addWordToVocab = (
+  word: Omit<VocabularyWord, 'id' | 'dateAdded' | 'nextReviewDate' | 'interval' | 'easeFactor'>
+): boolean => {
   const current = getStoredVocab();
   const exists = current.some((item) => item.word.toLowerCase() === word.word.toLowerCase());
   if (exists) return false;
@@ -312,25 +449,13 @@ export const addWordToVocab = (word: Omit<VocabularyWord, 'id' | 'dateAdded' | '
 // SETTINGS
 // -------------------------------------------------------------
 export const getStoredSettings = (): AppSettings => {
-  if (typeof window === 'undefined') return defaultSettings;
-  try {
-    const raw = localStorage.getItem(SETTINGS_KEY);
-    if (!raw) return defaultSettings;
-    return { ...defaultSettings, ...JSON.parse(raw) };
-  } catch {
-    return defaultSettings;
-  }
+  return memorySettings;
 };
 
 export const saveStoredSettings = (settings: Partial<AppSettings>): AppSettings => {
-  if (typeof window === 'undefined') return defaultSettings;
-  try {
-    const current = getStoredSettings();
-    const updated = { ...current, ...settings };
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(updated));
-    syncProgressToServer();
-    return updated;
-  } catch {
-    return defaultSettings;
-  }
+  const updated = { ...memorySettings, ...settings };
+  memorySettings = updated;
+  notifyListeners();
+  syncToFirestore({ settings: updated });
+  return updated;
 };

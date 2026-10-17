@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { ReadingPassage, CEFRLevel } from '@/types';
 import { SAMPLE_READING_PASSAGES } from '@/lib/sampleData';
 import { speakText } from '@/lib/speech';
-import { addXP, addWordToVocab, getStoredSettings } from '@/lib/storage';
+import { addXP, addWordToVocab, getStoredSettings, recordPracticeScore, getStoredStats } from '@/lib/storage';
 import confetti from 'canvas-confetti';
 import {
   BookOpen,
@@ -173,6 +173,8 @@ export const ReadingStudio: React.FC = () => {
     const scorePct = Math.round((correct / activePassage.questions.length) * 100);
     setQuizScore(scorePct);
     setQuizSubmitted(true);
+
+    recordPracticeScore('reading', activePassage.id, `${scorePct}%`, activePassage.title);
 
     if (scorePct >= 75) {
       confetti({

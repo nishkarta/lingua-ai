@@ -55,7 +55,7 @@ Built with **Next.js (App Router, TypeScript)**, **Tailwind CSS**, the **Google 
 
 ### Prerequisites
 - **Node.js**: v18.0.0 or higher
-- **npm** or **pnpm**
+- **Yarn** (`npm install -g yarn` or `corepack enable`)
 - Modern Web Browser: Google Chrome, Microsoft Edge, or Safari (for Web Speech API support)
 
 ### Running the Application
@@ -65,12 +65,17 @@ Built with **Next.js (App Router, TypeScript)**, **Tailwind CSS**, the **Google 
    cd /Users/nishkarta/Documents/personal-projects/lingua-ai
    ```
 
-2. Start the local development server:
+2. Install dependencies:
    ```bash
-   npm run dev
+   yarn install
    ```
 
-3. Open **[http://localhost:3000](http://localhost:3000)** in your browser!
+3. Start the local development server:
+   ```bash
+   yarn dev
+   ```
+
+4. Open **[http://localhost:3000](http://localhost:3000)** in your browser!
 
 ---
 
@@ -82,3 +87,20 @@ LinguaAI is designed with **zero-setup out-of-the-box readiness**:
   1. Click the **Settings (gear icon)** in the top right of the navigation bar.
   2. Paste your Google Gemini API key (obtainable for free from [Google AI Studio](https://aistudio.google.com/app/apikey)).
   3. Alternatively, add `GEMINI_API_KEY=your_key_here` to a `.env.local` file in the project root.
+
+---
+
+## 🔥 Cloud Database & Authentication (Firebase)
+
+User progress, CEFR statistics, vocabulary flashcards, and preferences are synchronized to **Cloud Firestore** and managed by **Firebase Authentication**:
+
+Create a `.env.local` file with your Firebase web app credentials:
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=your_firebase_api_key
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=your_project_id.firebaseapp.com
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=your_project_id
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=your_project_id.appspot.com
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+NEXT_PUBLIC_FIREBASE_APP_ID=your_firebase_app_id
+```
+*(If no Firebase keys are set, the app runs in an active in-memory session mode without breaking.)*
