@@ -14,12 +14,16 @@ import {
   TrendingUp,
   Sparkles,
   CheckCircle,
+  Sliders,
+  Compass,
+  Target,
 } from 'lucide-react';
 
 interface SkillDashboardProps {
   stats: UserStats;
   onNavigateTab: (tab: string) => void;
   onOpenSettings: () => void;
+  onOpenLevelSetup?: (initialLevel?: CEFRLevel) => void;
 }
 
 const CEFR_LEVELS: { level: CEFRLevel; title: string; minScore: number }[] = [
@@ -34,6 +38,7 @@ const CEFR_LEVELS: { level: CEFRLevel; title: string; minScore: number }[] = [
 export const SkillDashboard: React.FC<SkillDashboardProps> = ({
   stats,
   onNavigateTab,
+  onOpenLevelSetup,
 }) => {
   const avgScore = Math.round(
     (stats.skillScores.reading +
@@ -42,6 +47,11 @@ export const SkillDashboard: React.FC<SkillDashboardProps> = ({
       stats.skillScores.speaking) /
       4
   );
+
+  const targetLevel = stats.targetLevel || 'C1';
+  const targetLevelIndex = CEFR_LEVELS.findIndex((l) => l.level === targetLevel);
+  const currentLevelOption = CEFR_LEVELS.find((l) => l.level === stats.level);
+  const targetLevelOption = CEFR_LEVELS.find((l) => l.level === targetLevel);
 
   const currentLevelIndex = CEFR_LEVELS.findIndex((l) => l.level === stats.level);
   const nextLevel = currentLevelIndex < CEFR_LEVELS.length - 1 ? CEFR_LEVELS[currentLevelIndex + 1] : null;
@@ -74,7 +84,31 @@ export const SkillDashboard: React.FC<SkillDashboardProps> = ({
               Welcome back, Learner!
             </h1>
             <p className="text-sm text-slate-300 leading-relaxed">
-              Your overall proficiency is evaluated at <strong className="text-indigo-300">{stats.level} ({CEFR_LEVELS.find((l) => l.level === stats.level)?.title})</strong>.
+              Your current proficiency is evaluated at{' '}
+              <strong className="text-indigo-300">
+                {stats.level} ({currentLevelOption?.title})
+              </strong>
+              {stats.level !== targetLevel && (
+                <>
+                  {' '}working toward target goal{' '}
+                  <strong className="text-amber-300">
+                    {targetLevel} ({targetLevelOption?.title})
+                  </strong>
+                </>
+              )}
+              .
+              {onOpenLevelSetup && (
+                <button
+                  type="button"
+                  onClick={() => onOpenLevelSetup()}
+                  className="ml-2 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-lg bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 hover:text-white border border-indigo-500/30 text-xs font-semibold transition-all cursor-pointer"
+                >
+                  <Sliders className="w-3 h-3" />
+                  <span>Adjust Levels</span>
+                </button>
+              )}
+            </p>
+            <p className="text-xs text-slate-400">
               Keep your {stats.streak}-day streak going by completing your 4-skill daily session.
             </p>
           </div>
@@ -105,13 +139,34 @@ export const SkillDashboard: React.FC<SkillDashboardProps> = ({
 
         {/* CEFR Level Progress Roadmap */}
         <div className="mt-8 pt-6 border-t border-slate-800/80">
-          <div className="flex items-center justify-between text-xs mb-2.5 font-medium">
-            <span className="text-slate-300 flex items-center gap-1.5">
-              <TrendingUp className="w-3.5 h-3.5 text-indigo-400" />
-              Level Progression: <strong className="text-white">{stats.level}</strong>
-              {nextLevel && <span className="text-slate-400">→ Next: {nextLevel.level}</span>}
+          <div className="flex flex-wrap items-center justify-between text-xs mb-2.5 font-medium gap-2">
+            <span className="text-slate-300 flex flex-wrap items-center gap-2">
+              <span className="flex items-center gap-1.5">
+                <TrendingUp className="w-3.5 h-3.5 text-indigo-400" />
+                Current: <strong className="text-white">{stats.level}</strong>
+              </span>
+              <span className="text-slate-500">➔</span>
+              <span className="flex items-center gap-1 text-amber-300">
+                <Target className="w-3.5 h-3.5 text-amber-400" />
+                Goal: <strong className="text-amber-200">{targetLevel}</strong>
+              </span>
+              {nextLevel && stats.level !== targetLevel && (
+                <span className="text-slate-400 hidden md:inline text-[11px]">(Next milestone: {nextLevel.level})</span>
+              )}
             </span>
-            <span className="text-indigo-400 font-semibold">{progressToNext}% to {nextLevel ? nextLevel.level : 'Max'}</span>
+            <div className="flex items-center gap-3">
+              <span className="text-indigo-400 font-semibold">{progressToNext}% to {nextLevel ? nextLevel.level : 'Goal'}</span>
+              {onOpenLevelSetup && (
+                <button
+                  type="button"
+                  onClick={() => onOpenLevelSetup()}
+                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-xl bg-slate-950/80 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-800 text-[11px] font-semibold transition-all cursor-pointer"
+                >
+                  <Compass className="w-3 h-3 text-indigo-400" />
+                  <span>Set Levels</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Progress Bar */}
@@ -126,24 +181,37 @@ export const SkillDashboard: React.FC<SkillDashboardProps> = ({
           <div className="grid grid-cols-6 gap-1 mt-3">
             {CEFR_LEVELS.map((lvl, idx) => {
               const isCurrent = lvl.level === stats.level;
+              const isTarget = lvl.level === targetLevel;
               const isPassed = idx < currentLevelIndex;
+              const isInPath = idx > currentLevelIndex && idx < targetLevelIndex;
+
               return (
-                <div key={lvl.level} className="text-center">
+                <button
+                  key={lvl.level}
+                  type="button"
+                  onClick={() => onOpenLevelSetup?.(lvl.level)}
+                  title={`Click to set level (Current or Goal)`}
+                  className="text-center group/lvl cursor-pointer p-1 rounded-xl hover:bg-slate-800/50 transition-all focus:outline-none"
+                >
                   <div
-                    className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold ${
+                    className={`inline-block px-2.5 py-0.5 rounded text-[10px] font-bold transition-transform group-hover/lvl:scale-105 ${
                       isCurrent
-                        ? 'bg-indigo-600 text-white ring-2 ring-indigo-400/40'
+                        ? 'bg-indigo-600 text-white ring-2 ring-indigo-400/50 shadow-md shadow-indigo-600/30'
+                        : isTarget
+                        ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40 ring-1 ring-amber-400/30'
                         : isPassed
                         ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
-                        : 'bg-slate-800/40 text-slate-500'
+                        : isInPath
+                        ? 'bg-slate-800/70 text-indigo-300 border border-indigo-500/30'
+                        : 'bg-slate-800/40 text-slate-500 group-hover/lvl:text-slate-300 group-hover/lvl:bg-slate-800'
                     }`}
                   >
                     {lvl.level}
                   </div>
-                  <p className="text-[10px] text-slate-400 truncate mt-0.5 hidden sm:block">
-                    {lvl.title}
+                  <p className="text-[10px] text-slate-400 group-hover/lvl:text-slate-200 truncate mt-0.5 hidden sm:block">
+                    {isCurrent ? 'Current' : isTarget ? '★ Goal' : lvl.title}
                   </p>
-                </div>
+                </button>
               );
             })}
           </div>

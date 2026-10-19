@@ -52,7 +52,7 @@ export const ReadingStudio: React.FC = () => {
   // AI Generator Modal State
   const [isGenerating, setIsGenerating] = useState(false);
   const [customTopic, setCustomTopic] = useState('');
-  const [generatorLevel, setGeneratorLevel] = useState<CEFRLevel>('B2');
+  const [generatorLevel, setGeneratorLevel] = useState<CEFRLevel>(getStoredStats().level || 'B2');
   const [showGenModal, setShowGenModal] = useState(false);
 
   // Timer effect
@@ -564,10 +564,10 @@ export const ReadingStudio: React.FC = () => {
 
               <div>
                 <label className="text-xs font-semibold text-slate-300 block mb-1.5">
-                  Target CEFR Level
+                  Passage Difficulty (CEFR Level)
                 </label>
-                <div className="grid grid-cols-5 gap-1.5">
-                  {(['A2', 'B1', 'B2', 'C1', 'C2'] as CEFRLevel[]).map((lvl) => (
+                <div className="grid grid-cols-6 gap-1.5">
+                  {(['A1', 'A2', 'B1', 'B2', 'C1', 'C2'] as CEFRLevel[]).map((lvl) => (
                     <button
                       type="button"
                       key={lvl}

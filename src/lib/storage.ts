@@ -33,6 +33,7 @@ export const defaultStats: UserStats = {
   streak: 3,
   lastActiveDate: new Date().toISOString().split('T')[0],
   level: 'B1',
+  targetLevel: 'C1',
   skillScores: {
     reading: 72,
     writing: 65,
@@ -136,8 +137,21 @@ const storageListeners = new Set<StorageListener>();
 
 export const subscribeToStorage = (listener: StorageListener): (() => void) => {
   storageListeners.add(listener);
+  const handleFocus = () => {
+    try {
+      listener();
+    } catch (e) {
+      console.error('Focus storage listener error:', e);
+    }
+  };
+  if (typeof window !== 'undefined') {
+    window.addEventListener('focus', handleFocus);
+  }
   return () => {
     storageListeners.delete(listener);
+    if (typeof window !== 'undefined') {
+      window.removeEventListener('focus', handleFocus);
+    }
   };
 };
 
@@ -149,6 +163,10 @@ const notifyListeners = (): void => {
       console.error('Storage listener execution error:', e);
     }
   });
+};
+
+export const notifyStorageListeners = (): void => {
+  notifyListeners();
 };
 
 // -------------------------------------------------------------
@@ -327,6 +345,38 @@ export const saveStoredStats = (stats: UserStats): void => {
   syncToFirestore({ stats });
 };
 
+export const CEFR_BASELINE_SCORES: Record<CEFRLevel, UserStats['skillScores']> = {
+  A1: { reading: 25, writing: 20, listening: 30, speaking: 25 },
+  A2: { reading: 42, writing: 38, listening: 45, speaking: 40 },
+  B1: { reading: 58, writing: 54, listening: 62, speaking: 55 },
+  B2: { reading: 72, writing: 68, listening: 75, speaking: 70 },
+  C1: { reading: 84, writing: 80, listening: 86, speaking: 82 },
+  C2: { reading: 94, writing: 91, listening: 95, speaking: 92 },
+};
+
+export const setUserLevel = (
+  level: CEFRLevel,
+  targetLevel?: CEFRLevel,
+  calibrateBaseline: boolean = true
+): UserStats => {
+  const current = getStoredStats();
+  const updatedScores = calibrateBaseline
+    ? { ...CEFR_BASELINE_SCORES[level] }
+    : { ...current.skillScores };
+
+  const resolvedTarget = targetLevel || current.targetLevel || 'C1';
+
+  const updated: UserStats = {
+    ...current,
+    level,
+    targetLevel: resolvedTarget,
+    skillScores: updatedScores,
+  };
+
+  saveStoredStats(updated);
+  return updated;
+};
+
 export const addXP = (amount: number, skill?: keyof UserStats['skillScores']): UserStats => {
   const current = getStoredStats();
   const today = new Date().toISOString().split('T')[0];
@@ -354,19 +404,25 @@ export const addXP = (amount: number, skill?: keyof UserStats['skillScores']): U
   // Recalculate level based on overall average
   const avg =
     (updatedScores.reading + updatedScores.writing + updatedScores.listening + updatedScores.speaking) / 4;
-  let newLevel: CEFRLevel = 'A1';
-  if (avg >= 88) newLevel = 'C2';
-  else if (avg >= 78) newLevel = 'C1';
-  else if (avg >= 65) newLevel = 'B2';
-  else if (avg >= 50) newLevel = 'B1';
-  else if (avg >= 35) newLevel = 'A2';
+  let calculatedLevel: CEFRLevel = 'A1';
+  if (avg >= 88) calculatedLevel = 'C2';
+  else if (avg >= 78) calculatedLevel = 'C1';
+  else if (avg >= 65) calculatedLevel = 'B2';
+  else if (avg >= 50) calculatedLevel = 'B1';
+  else if (avg >= 35) calculatedLevel = 'A2';
+
+  // Automatically advance level if score meets or exceeds next tier, but do not demote user's chosen level
+  const CEFR_ORDER: CEFRLevel[] = ['A1', 'A2', 'B1', 'B2', 'C1', 'C2'];
+  const currentIndex = CEFR_ORDER.indexOf(current.level);
+  const calculatedIndex = CEFR_ORDER.indexOf(calculatedLevel);
+  const finalLevel = calculatedIndex > currentIndex ? calculatedLevel : current.level;
 
   const updated: UserStats = {
     ...current,
     xp: current.xp + amount,
     streak: newStreak,
     lastActiveDate: today,
-    level: newLevel,
+    level: finalLevel,
     skillScores: updatedScores,
     completedExercises: updatedCompleted,
   };

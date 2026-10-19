@@ -7,6 +7,7 @@ export interface UserStats {
   streak: number;
   lastActiveDate: string;
   level: CEFRLevel;
+  targetLevel?: CEFRLevel;
   skillScores: {
     reading: number;
     writing: number;

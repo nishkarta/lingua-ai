@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useSyncExternalStore } from 'react';
 import { UserStats } from '@/types';
 import {
   getStoredStats,
@@ -10,6 +10,7 @@ import {
   AuthUserProfile,
   initFirebaseStorage,
   subscribeToStorage,
+  notifyStorageListeners,
 } from '@/lib/storage';
 import { Navbar } from '@/components/Navbar';
 import { SkillDashboard } from '@/components/dashboard/SkillDashboard';
@@ -20,54 +21,56 @@ import { SpeakingCoach } from '@/components/speaking/SpeakingCoach';
 import { VocabularyBank } from '@/components/vocabulary/VocabularyBank';
 import { SettingsModal } from '@/components/settings/SettingsModal';
 import { AuthModal } from '@/components/auth/AuthModal';
+import { LevelSetupModal } from '@/components/level/LevelSetupModal';
+import { CEFRLevel } from '@/types';
+
+const emptySubscribe = () => () => {};
 
 export default function Home() {
-  const [activeTab, setActiveTab] = useState<string>('dashboard');
-  const [stats, setStats] = useState<UserStats>(defaultStats);
-  const [user, setUser] = useState<AuthUserProfile | null>(null);
+  const isMounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
+  const stats = useSyncExternalStore(
+    subscribeToStorage,
+    getStoredStats,
+    () => defaultStats
+  );
+
+  const user = useSyncExternalStore(
+    subscribeToStorage,
+    getCurrentUser,
+    () => null
+  );
+
+  const [activeTab, setActiveTab] = useState<string>('dashboard');
   const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isAuthOpen, setIsAuthOpen] = useState<boolean>(false);
-  const [isMounted, setIsMounted] = useState<boolean>(false);
+  const [isLevelModalOpen, setIsLevelModalOpen] = useState<boolean>(false);
+  const [initialModalLevel, setInitialModalLevel] = useState<CEFRLevel | undefined>(undefined);
 
   useEffect(() => {
-    setIsMounted(true);
     // Initialize Firebase Auth listener and Firestore data sync
     initFirebaseStorage();
-
-    setStats(getStoredStats());
-    setUser(getCurrentUser());
-
-    // Subscribe to live storage updates (e.g. Firestore sync, XP changes)
-    const unsubscribe = subscribeToStorage(() => {
-      setStats(getStoredStats());
-      setUser(getCurrentUser());
-    });
-
-    const handleFocus = () => {
-      setStats(getStoredStats());
-      setUser(getCurrentUser());
-    };
-    window.addEventListener('focus', handleFocus);
-    return () => {
-      unsubscribe();
-      window.removeEventListener('focus', handleFocus);
-    };
   }, []);
 
   const handleUpdateStats = () => {
-    setStats(getStoredStats());
+    notifyStorageListeners();
   };
 
-  const handleAuthSuccess = (authenticatedUser: AuthUserProfile) => {
-    setUser(authenticatedUser);
-    setStats(getStoredStats());
+  const handleAuthSuccess = (_authenticatedUser: AuthUserProfile) => {
+    notifyStorageListeners();
   };
 
   const handleLogout = async () => {
     await logoutLocalUser();
-    setUser(null);
-    setStats(getStoredStats());
+  };
+
+  const handleOpenLevelSetup = (initialLevel?: CEFRLevel) => {
+    setInitialModalLevel(initialLevel);
+    setIsLevelModalOpen(true);
   };
 
   if (!isMounted) {
@@ -92,6 +95,7 @@ export default function Home() {
         onOpenSettings={() => setIsSettingsOpen(true)}
         onOpenAuth={() => setIsAuthOpen(true)}
         onLogout={handleLogout}
+        onOpenLevelSetup={() => handleOpenLevelSetup()}
       />
 
       {/* Main Content Area */}
@@ -104,6 +108,7 @@ export default function Home() {
               handleUpdateStats();
             }}
             onOpenSettings={() => setIsSettingsOpen(true)}
+            onOpenLevelSetup={handleOpenLevelSetup}
           />
         )}
 
@@ -130,6 +135,22 @@ export default function Home() {
         isOpen={isSettingsOpen}
         onClose={() => {
           setIsSettingsOpen(false);
+          handleUpdateStats();
+        }}
+        onOpenFullLevelSetup={() => handleOpenLevelSetup()}
+      />
+
+      {/* CEFR Level Setup & Calibration Modal */}
+      <LevelSetupModal
+        isOpen={isLevelModalOpen}
+        onClose={() => {
+          setIsLevelModalOpen(false);
+          handleUpdateStats();
+        }}
+        currentLevel={stats.level}
+        currentTargetLevel={stats.targetLevel}
+        initialSelectedLevel={initialModalLevel}
+        onLevelSaved={(_newCurrent, _newTarget) => {
           handleUpdateStats();
         }}
       />

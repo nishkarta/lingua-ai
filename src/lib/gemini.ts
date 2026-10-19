@@ -28,7 +28,8 @@ export async function callGemini(
     throw new Error('NO_API_KEY');
   }
 
-  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+  const model = 'gemini-flash-latest';
+  const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
 
   const requestBody: {
     contents: { role: string; parts: { text: string }[] }[];

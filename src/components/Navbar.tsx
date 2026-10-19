@@ -17,6 +17,7 @@ import {
   User,
   LogOut,
   CloudCheck,
+  Compass,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -27,6 +28,7 @@ interface NavbarProps {
   onOpenSettings: () => void;
   onOpenAuth: () => void;
   onLogout: () => void;
+  onOpenLevelSetup?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -37,6 +39,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onOpenSettings,
   onOpenAuth,
   onLogout,
+  onOpenLevelSetup,
 }) => {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
 
@@ -160,7 +163,17 @@ export const Navbar: React.FC<NavbarProps> = ({
                         <span>Progress Saved to Cloud</span>
                       </div>
                     </div>
-                    <div className="pt-1">
+                    <div className="pt-1 space-y-0.5">
+                      <button
+                        onClick={() => {
+                          setShowUserDropdown(false);
+                          if (onOpenLevelSetup) onOpenLevelSetup();
+                        }}
+                        className="w-full flex items-center gap-2 px-2.5 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+                      >
+                        <Compass className="w-3.5 h-3.5 text-indigo-400" />
+                        <span>Proficiency: {stats.level} ➔ {stats.targetLevel || 'C1'}</span>
+                      </button>
                       <button
                         onClick={() => {
                           setShowUserDropdown(false);
